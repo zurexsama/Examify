@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Online Quiz System | Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>ONLINE QUIZ SYSTEM</h1>
+  <h2>Dashboard</h2>
+  <div class="card dashboard-card">
+    {% for course in courses %}
+    <div class="course-block">
+      <strong>{{ course.title }}</strong><br>
+      <span>{{ course.desc }}</span><br>
+      {% if course.type == 'quiz' %}
+      <a href="/quiz"><button>Start Quiz</button></a>
+      {% else %}
+      <button>View Course</button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

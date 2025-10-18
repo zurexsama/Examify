@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Sign Up | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <h1>Register for Examify</h1>
+        <div class="card register-card">
+            <form action="/register" method="POST">
+                <h2>REGISTER</h2>
+                {% if error %}
+                    <div class="error-message">{{ error }}</div>
+                {% endif %}
+                {% if success %}
+                    <div class="success-message">{{ success }}</div>
+                {% endif %}
+                
+                <label>Name:</label><br>
+                <input type="text" name="name" required><br><br>
+
+                <label>Email:</label><br>
+                <input type="email" name="email" required><br><br>
+
+                <label>Password:</label><br>
+                <input type="password" name="password" required minlength="6"><br><br>
+
+                <label>Role:</label><br>
+                <select name="role" required>
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                </select><br><br>
+
+                <button type="submit">Register</button>
+            </form>
+            <p>
+                Already have an account? <a href="/login">Login here</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

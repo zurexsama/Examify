@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Teacher Dashboard | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>👨‍🏫 Examify - Teacher Dashboard</h1>
+            <div class="user-info">
+                <span>Welcome, {{ session.name }}!</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-section">
+                <h2>📚 My Topics</h2>
+                <div class="topics-grid">
+                    {% if topics %}
+                        {% for topic in topics %}
+                            <div class="topic-card">
+                                <h3>{{ topic.name }}</h3>
+                                <p>{{ topic.description }}</p>
+                                <div class="topic-actions">
+                                    <span class="topic-id">ID: {{ topic.id }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-content">
+                            <p>You haven't created any topics yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="action-buttons">
+                    <a href="/teacher/create-topic" class="btn-primary">+ Create New Topic</a>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h2>📝 My Quizzes</h2>
+                <div class="quizzes-grid">
+                    {% if quizzes %}
+                        {% for quiz in quizzes %}
+                            <div class="quiz-card">
+                                <h3>{{ quiz.title }}</h3>
+                                <p class="quiz-details">
+                                    Duration: {{ quiz.duration }} minutes | 
+                                    Total Marks: {{ quiz.total_marks }}
+                                </p>
+                                <div class="quiz-actions">
+                                    <a href="/teacher/results/{{ quiz.id }}" class="btn-secondary">View Results</a>
+                                    <a href="/teacher/download-scores/{{ quiz.id }}" class="btn-download">Download Scores</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-content">
+                            <p>You haven't created any quizzes yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="action-buttons">
+                    <a href="/teacher/create-quiz" class="btn-primary">+ Create New Quiz</a>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h2>📊 Quick Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>{{ topics|length }}</h3>
+                        <p>Topics Created</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ quizzes|length }}</h3>
+                        <p>Quizzes Created</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>0</h3>
+                        <p>Total Students</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>0</h3>
+                        <p>Quiz Attempts</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

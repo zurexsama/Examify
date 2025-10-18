@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Quiz Result | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>📊 Quiz Result</h1>
+            <div class="user-info">
+                <span>Welcome, {{ session.name }}!</span>
+                <a href="/student/dashboard" class="btn-secondary">Back to Dashboard</a>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="result-card">
+                <h2>{{ quiz.title }}</h2>
+                <div class="result-summary">
+                    <div class="score-display">
+                        <h3>Your Score</h3>
+                        <div class="score-circle">
+                            <span class="score-number">{{ "%.1f"|format(attempt.percentage) }}%</span>
+                        </div>
+                        <p class="score-details">{{ attempt.score }}/{{ attempt.total_marks }} marks</p>
+                    </div>
+                    
+                    <div class="result-details">
+                        <div class="detail-item">
+                            <strong>Quiz:</strong> {{ quiz.title }}
+                        </div>
+                        <div class="detail-item">
+                            <strong>Completed:</strong> {{ attempt.completed_at.strftime('%B %d, %Y at %I:%M %p') if attempt.completed_at else 'N/A' }}
+                        </div>
+                        <div class="detail-item">
+                            <strong>Duration:</strong> {{ quiz.duration }} minutes
+                        </div>
+                        <div class="detail-item">
+                            <strong>Total Questions:</strong> {{ questions|length }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="performance-message">
+                    {% if attempt.percentage >= 80 %}
+                        <div class="success-message">
+                            🎉 Excellent work! You scored {{ "%.1f"|format(attempt.percentage) }}%!
+                        </div>
+                    {% elif attempt.percentage >= 60 %}
+                        <div class="warning-message">
+                            👍 Good job! You scored {{ "%.1f"|format(attempt.percentage) }}%. Keep it up!
+                        </div>
+                    {% else %}
+                        <div class="error-message">
+                            📚 You scored {{ "%.1f"|format(attempt.percentage) }}%. Review the material and try again!
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="action-buttons">
+                    <a href="/student/dashboard" class="btn-primary">Back to Dashboard</a>
+                    <a href="/student/take-quiz/{{ quiz.id }}" class="btn-secondary">Retake Quiz</a>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

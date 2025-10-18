@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Introduction of Psychology Quiz</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>ONLINE QUIZ SYSTEM</h1>
+  <h2><u>Introduction of Psychology Quiz</u></h2>
+  <div class="card quiz-card">
+    <div>Time Left: {{ question.time_left }} &nbsp;&nbsp; Progress: {{ question.progress }}</div>
+    <hr>
+    <form>
+      <b>Question {{ question.number }}.</b><br>
+      <span>Which of the following is considered father of modern psychology?</span><br/>
+      {% for choice in question.choices %}
+      <input type="radio" name="answer" value="{{ choice }}" {% if choice == question.selected %}checked{% endif %}> {{ choice }}<br>
+      {% endfor %}
+      <div class="nav-buttons">
+        <button type="button">Previous</button>
+        <button type="button">Next</button>
+        <button type="submit">Submit Quiz</button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Create Quiz | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>📝 Create New Quiz</h1>
+            <div class="user-info">
+                <span>Welcome, {{ session.name }}!</span>
+                <a href="/teacher/dashboard" class="btn-secondary">Back to Dashboard</a>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-section">
+                <form method="POST" id="quizForm">
+                    <div class="form-group">
+                        <label>Quiz Title</label>
+                        <input type="text" name="title" required placeholder="Enter quiz title">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Topic</label>
+                        <select name="topic_id" required>
+                            <option value="">Select a topic</option>
+                            {% for topic in topics %}
+                            <option value="{{ topic.id }}">{{ topic.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Duration (minutes)</label>
+                            <input type="number" name="duration" required min="1" placeholder="30">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Marks</label>
+                            <input type="number" name="total_marks" required min="1" placeholder="100">
+                        </div>
+                    </div>
+                    
+                    <h3>Add Questions</h3>
+                    <div id="questionsContainer">
+                        <div class="question-card">
+                            <h4>Question 1</h4>
+                            <div class="form-group">
+                                <label>Question Text</label>
+                                <textarea name="questions[0][text]" required placeholder="Enter your question here..."></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Marks</label>
+                                <input type="number" name="questions[0][marks]" required min="1" placeholder="5">
+                            </div>
+                            
+                            <div class="options-container">
+                                <label>Answer Options</label>
+                                <div class="option-group">
+                                    <input type="text" name="questions[0][options][0]" placeholder="Option A" required>
+                                    <label class="radio-label">
+                                        <input type="radio" name="questions[0][correct]" value="0" required>
+                                        Correct
+                                    </label>
+                                </div>
+                                <div class="option-group">
+                                    <input type="text" name="questions[0][options][1]" placeholder="Option B" required>
+                                    <label class="radio-label">
+                                        <input type="radio" name="questions[0][correct]" value="1">
+                                        Correct
+                                    </label>
+                                </div>
+                                <div class="option-group">
+                                    <input type="text" name="questions[0][options][2]" placeholder="Option C">
+                                    <label class="radio-label">
+                                        <input type="radio" name="questions[0][correct]" value="2">
+                                        Correct
+                                    </label>
+                                </div>
+                                <div class="option-group">
+                                    <input type="text" name="questions[0][options][3]" placeholder="Option D">
+                                    <label class="radio-label">
+                                        <input type="radio" name="questions[0][correct]" value="3">
+                                        Correct
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="addQuestion()">+ Add Another Question</button>
+                        <button type="submit" class="btn-primary">Create Quiz</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    let questionCount = 1;
+    
+    function addQuestion() {
+        const container = document.getElementById('questionsContainer');
+        const questionHTML = `
+            <div class="question-card">
+                <h4>Question ${questionCount + 1}</h4>
+                <div class="form-group">
+                    <label>Question Text</label>
+                    <textarea name="questions[${questionCount}][text]" required placeholder="Enter your question here..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Marks</label>
+                    <input type="number" name="questions[${questionCount}][marks]" required min="1" placeholder="5">
+                </div>
+                
+                <div class="options-container">
+                    <label>Answer Options</label>
+                    <div class="option-group">
+                        <input type="text" name="questions[${questionCount}][options][0]" placeholder="Option A" required>
+                        <label class="radio-label">
+                            <input type="radio" name="questions[${questionCount}][correct]" value="0" required>
+                            Correct
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <input type="text" name="questions[${questionCount}][options][1]" placeholder="Option B" required>
+                        <label class="radio-label">
+                            <input type="radio" name="questions[${questionCount}][correct]" value="1">
+                            Correct
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <input type="text" name="questions[${questionCount}][options][2]" placeholder="Option C">
+                        <label class="radio-label">
+                            <input type="radio" name="questions[${questionCount}][correct]" value="2">
+                            Correct
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <input type="text" name="questions[${questionCount}][options][3]" placeholder="Option D">
+                        <label class="radio-label">
+                            <input type="radio" name="questions[${questionCount}][correct]" value="3">
+                            Correct
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', questionHTML);
+        questionCount++;
+    }
+    </script>
+</body>
+</html>

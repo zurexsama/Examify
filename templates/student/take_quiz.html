@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Take Quiz | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>📝 {{ quiz.title }}</h1>
+            <div class="user-info">
+                <span>Welcome, {{ session.name }}!</span>
+                <a href="/student/dashboard" class="btn-secondary">Back to Dashboard</a>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="quiz-info">
+                <div class="quiz-details">
+                    <p><strong>Duration:</strong> {{ quiz.duration }} minutes</p>
+                    <p><strong>Total Marks:</strong> {{ quiz.total_marks }}</p>
+                    <p><strong>Questions:</strong> {{ questions_with_options|length }}</p>
+                </div>
+                <div class="timer" id="timer">
+                    Time Remaining: <span id="time-display">{{ quiz.duration }}:00</span>
+                </div>
+            </div>
+
+            <form method="POST" action="/student/submit-quiz/{{ quiz.id }}" id="quizForm">
+                <div class="quiz-questions">
+                    {% for item in questions_with_options %}
+                    <div class="question-card">
+                        <h3>Question {{ loop.index }}</h3>
+                        <p class="question-text">{{ item.question.question_text }}</p>
+                        <p class="question-marks">({{ item.question.marks }} marks)</p>
+                        
+                        <div class="options-container">
+                            {% for option in item.options %}
+                            <div class="option-group">
+                                <label class="option-label">
+                                    <input type="radio" 
+                                           name="question_{{ item.question.id }}" 
+                                           value="{{ loop.index0 }}" 
+                                           required>
+                                    <span class="option-text">{{ option.option_text }}</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="quiz-actions">
+                    <button type="submit" class="btn-primary" id="submitBtn">Submit Quiz</button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        // Timer functionality
+        let timeLeft = {{ quiz.duration * 60 }}; // Convert minutes to seconds
+        const timerDisplay = document.getElementById('time-display');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 0) {
+                alert('Time is up! Submitting quiz automatically.');
+                document.getElementById('quizForm').submit();
+                return;
+            }
+            
+            timeLeft--;
+        }
+        
+        // Update timer every second
+        const timer = setInterval(updateTimer, 1000);
+        
+        // Form submission confirmation
+        document.getElementById('quizForm').addEventListener('submit', function(e) {
+            const unanswered = document.querySelectorAll('input[type="radio"]:not(:checked)');
+            const totalQuestions = {{ questions_with_options|length }};
+            const answered = totalQuestions - unanswered.length;
+            
+            if (answered < totalQuestions) {
+                if (!confirm(`You have answered ${answered} out of ${totalQuestions} questions. Are you sure you want to submit?`)) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+            
+            clearInterval(timer);
+        });
+        
+        // Auto-save progress (optional)
+        function saveProgress() {
+            const formData = new FormData(document.getElementById('quizForm'));
+            // You could implement auto-save here if needed
+        }
+        
+        // Save progress every 30 seconds
+        setInterval(saveProgress, 30000);
+    </script>
+</body>
+</html>

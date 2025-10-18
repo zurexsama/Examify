@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Quiz Results{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2>{{ quiz.title }} - Results</h2>
+                <p class="text-muted">Total Marks: {{ quiz.total_marks }}</p>
+            </div>
+            <a href="/teacher/download-scores/{{ quiz.id }}" class="btn btn-success">
+                <i class="bi bi-file-earmark-excel"></i> Download Excel
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Email</th>
+                    <th>Score</th>
+                    <th>Percentage</th>
+                    <th>Completed</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attempt, student in results %}
+                <tr>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.email }}</td>
+                    <td>{{ attempt.score }} / {{ attempt.total_marks }}</td>
+                    <td>
+                        <span class="badge {% if attempt.percentage >= 75 %}bg-success{% elif attempt.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                            {{ attempt.percentage }}%
+                        </span>
+                    </td>
+                    <td>{{ attempt.completed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if attempt.percentage >= 50 %}
+                        <span class="badge bg-success">Passed</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h4>{{ results|length }}</h4>
+                <p>Total Attempts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h4>{{ (results|selectattr('0.percentage', '>=', 50)|list|length) }}</h4>
+                <p>Passed</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h4>
+                {% set total_percentage = results|sum(attribute='0.percentage', start=0) %}
+                {{ (total_percentage / results|length)|round(2) if results|length > 0 else 0 }}%
+                </h4>
+                <p>Average Score</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

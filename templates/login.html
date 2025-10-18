@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Examify | Login</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <h1>Examify</h1>
+    <div class="card login-card">
+      <form method="POST" action="/login">
+        <h2>LOGIN</h2>
+        {% if error %}
+          <div class="error-message">{{ error }}</div>
+        {% endif %}
+        <input type="email" name="email" placeholder="Email" required><br>
+        <input type="password" name="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+        <a href="/register"><button type="button">Register</button></a>
+        <a href="#">Forgot Password?</a>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
