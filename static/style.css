@@ -260,6 +260,50 @@ label {
     flex-wrap: wrap;
 }
 
+.topic-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.btn-delete {
+    padding: 6px 12px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
 .btn-primary, .btn-secondary, .btn-download {
     padding: 8px 16px;
     border-radius: 20px;
@@ -375,6 +419,12 @@ th {
     background: #f0f0f0;
     padding: 2px 8px;
     border-radius: 10px;
+.creator-info {
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+    margin: 5px 0 10px 0;
+}
 }
 
 /* Form Styles for Create Quiz */

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, send_file
+from flask import Flask, render_template, request, redirect, session, send_file, flash
 import pymysql
 pymysql.install_as_MySQLdb()
 from flask_sqlalchemy import SQLAlchemy
@@ -125,17 +125,82 @@ def teacher_dashboard():
 def create_topic():
     if session.get('role') != 'teacher':
         return redirect('/login')
-    
+
     if request.method == 'POST':
         name = request.form['name']
         description = request.form['description']
         teacher_id = session.get('user_id')
-        
+
         new_topic = Topic(name=name, description=description, teacher_id=teacher_id)
         db.session.add(new_topic)
         db.session.commit()
         return redirect('/teacher/dashboard')
     return render_template('teacher/create_topic.html')
+
+@app.route('/teacher/delete-topic/<int:topic_id>', methods=['POST'])
+def delete_topic(topic_id):
+    if session.get('role') != 'teacher':
+        return redirect('/login')
+
+    teacher_id = session.get('user_id')
+    topic = Topic.query.filter_by(id=topic_id, teacher_id=teacher_id).first()
+
+    if not topic:
+        flash('Topic not found or you do not have permission to delete it.', 'error')
+        return redirect('/teacher/dashboard')
+
+    try:
+        # Check if topic has associated quizzes
+        associated_quizzes = Quiz.query.filter_by(topic_id=topic_id).count()
+        if associated_quizzes > 0:
+            flash(f'Cannot delete topic "{topic.name}" because it has {associated_quizzes} associated quiz(es). Please delete the quizzes first.', 'error')
+            return redirect('/teacher/dashboard')
+
+        db.session.delete(topic)
+        db.session.commit()
+        flash(f'Topic "{topic.name}" has been deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('An error occurred while deleting the topic. Please try again.', 'error')
+
+    return redirect('/teacher/dashboard')
+
+@app.route('/teacher/delete-quiz/<int:quiz_id>', methods=['POST'])
+def delete_quiz(quiz_id):
+    if session.get('role') != 'teacher':
+        return redirect('/login')
+
+    teacher_id = session.get('user_id')
+    quiz = Quiz.query.filter_by(id=quiz_id, teacher_id=teacher_id).first()
+
+    if not quiz:
+        flash('Quiz not found or you do not have permission to delete it.', 'error')
+        return redirect('/teacher/dashboard')
+
+    try:
+        # Check if quiz has associated attempts
+        associated_attempts = StudentAttempt.query.filter_by(quiz_id=quiz_id).count()
+        if associated_attempts > 0:
+            flash(f'Cannot delete quiz "{quiz.title}" because it has {associated_attempts} associated attempt(s).', 'error')
+            return redirect('/teacher/dashboard')
+
+        # Delete options first
+        questions = Question.query.filter_by(quiz_id=quiz_id).all()
+        for question in questions:
+            Option.query.filter_by(question_id=question.id).delete()
+
+        # Delete questions
+        Question.query.filter_by(quiz_id=quiz_id).delete()
+
+        # Delete quiz
+        db.session.delete(quiz)
+        db.session.commit()
+        flash(f'Quiz "{quiz.title}" has been deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('An error occurred while deleting the quiz. Please try again.', 'error')
+
+    return redirect('/teacher/dashboard')
 
 @app.route('/teacher/create-quiz', methods=['GET', 'POST'])
 def create_quiz():
