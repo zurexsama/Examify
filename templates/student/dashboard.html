@@ -16,28 +16,19 @@
 
         <main class="dashboard-main">
             <div class="dashboard-section">
-                <h2>📖 Available Quizzes</h2>
-                <div class="quizzes-grid">
-                    {% if topics_with_quizzes %}
-                        {% for topic, quiz in topics_with_quizzes %}
-                            <div class="quiz-card">
-                                <h3>{{ quiz.title }}</h3>
-                                <p class="topic-name">Topic: {{ topic.name }}</p>
-                                <p class="quiz-details">
-                                    Duration: {{ quiz.duration }} minutes | 
-                                    Total Marks: {{ quiz.total_marks }}
-                                </p>
-                                <a href="/student/take-quiz/{{ quiz.id }}" class="take-quiz-btn">
-                                    Take Quiz
-                                </a>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="no-quizzes">
-                            <p>No quizzes available at the moment.</p>
-                            <p>Check back later for new quizzes!</p>
+                <h2>🔐 Enter Quiz Access Code</h2>
+                <div class="access-code-form">
+                    <form method="POST" action="/student/enter-access-code">
+                        <div class="form-group">
+                            <label for="access_code">Access Code:</label>
+                            <input type="text" id="access_code" name="access_code" required maxlength="8" placeholder="Enter 8-character code (e.g., ABC12345)" style="text-transform: uppercase; font-family: monospace; font-size: 1.2em; letter-spacing: 2px;">
+                            <small style="color: #6c757d; display: block; margin-top: 5px;">
+                                Enter the 8-character alphanumeric code provided by your teacher.
+                                Codes are case-insensitive and can only be used once.
+                            </small>
                         </div>
-                    {% endif %}
+                        <button type="submit" class="btn-primary">🔓 Access Quiz</button>
+                    </form>
                 </div>
             </div>
 

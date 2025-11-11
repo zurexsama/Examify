@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Access Codes | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}" style="position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 400px;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>🔑 Access Codes - {{ quiz.title }}</h1>
+            <div class="user-info">
+                <span>Welcome, {{ session.name }}!</span>
+                <a href="/teacher/dashboard" class="btn-secondary">Back to Dashboard</a>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-section">
+                <h2>Code Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>{{ codes|length }}</h3>
+                        <p>Total Codes</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ codes|selectattr('is_used', 'equalto', false)|list|length }}</h3>
+                        <p>Available Codes</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ codes|selectattr('is_used', 'equalto', true)|list|length }}</h3>
+                        <p>Used Codes</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ "%.1f"|format((codes|selectattr('is_used', 'equalto', true)|list|length / codes|length * 100) if codes else 0) }}%</h3>
+                        <p>Usage Rate</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h2>Distribution Options</h2>
+                <div class="action-buttons">
+                    <a href="/teacher/download-codes/{{ quiz.id }}" class="btn-primary">📊 Download Excel Sheet</a>
+                    <a href="/teacher/print-codes/{{ quiz.id }}" class="btn-primary">🖨️ Generate Printable Sheet</a>
+                    <a href="/teacher/email-codes/{{ quiz.id }}" class="btn-primary">📧 Email Codes to Students</a>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h2>Access Codes</h2>
+                <div class="codes-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Status</th>
+                                <th>Used By</th>
+                                <th>Used At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for code in codes %}
+                            <tr class="{{ 'used' if code.is_used else 'available' }}">
+                                <td><code>{{ code.code }}</code></td>
+                                <td>
+                                    <span class="status-badge {{ 'used' if code.is_used else 'available' }}">
+                                        {{ 'Used' if code.is_used else 'Available' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if code.used_by %}
+                                        {{ users[code.used_by] if code.used_by in users else 'Unknown' }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if code.used_at %}
+                                        {{ code.used_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <style>
+    .codes-table {
+        overflow-x: auto;
+    }
+    .codes-table table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .codes-table th, .codes-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    .codes-table th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    .codes-table tr.available {
+        background-color: #f8fff8;
+    }
+    .codes-table tr.used {
+        background-color: #fff8f8;
+    }
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+    .status-badge.available {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-badge.used {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    code {
+        background-color: #f1f3f4;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 1.1em;
+    }
+    </style>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Email Access Codes | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}" style="position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 400px;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>📧 Email Access Codes - {{ quiz.title }}</h1>
+            <div class="user-info">
+                <span>Welcome, {{ session.name }}!</span>
+                <a href="/teacher/codes/{{ quiz.id }}" class="btn-secondary">Back to Codes</a>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-section">
+                <h2>Email Distribution</h2>
+                <p>Send access codes to students via email. Each student will receive one unique code.</p>
+
+                <div class="stats-grid" style="margin: 20px 0;">
+                    <div class="stat-card">
+                        <h3>{{ codes|selectattr('is_used', 'equalto', false)|list|length }}</h3>
+                        <p>Available Codes</p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Student Email Addresses</label>
+                        <textarea name="emails" required placeholder="Enter email addresses, one per line or comma-separated&#10;Example:&#10;student1@university.edu&#10;student2@university.edu&#10;student3@university.edu" rows="10" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;"></textarea>
+                        <small>Enter one email address per line, or separate with commas. Each email will receive one unique access code.</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">📧 Send Codes via Email</button>
+                    </div>
+                </form>
+
+                <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+                    <h3>⚠️ Email Configuration Required</h3>
+                    <p><strong>Important:</strong> Email functionality requires SMTP configuration in the application settings.</p>
+                    <p>Please ensure the following are configured in <code>app.py</code>:</p>
+                    <ul>
+                        <li><code>SMTP_SERVER</code> (e.g., 'smtp.gmail.com')</li>
+                        <li><code>SMTP_PORT</code> (e.g., 587)</li>
+                        <li><code>SENDER_EMAIL</code> (your email address)</li>
+                        <li><code>SENDER_PASSWORD</code> (your app password)</li>
+                    </ul>
+                    <p><strong>Note:</strong> For Gmail, you'll need to enable 2-factor authentication and generate an app password.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

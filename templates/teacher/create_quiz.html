@@ -43,6 +43,44 @@
                             <input type="number" name="total_marks" required min="1" placeholder="100">
                         </div>
                     </div>
+
+                    <h3>Access Code Settings</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Number of Access Codes to Generate</label>
+                            <input type="number" name="num_codes" required min="1" max="1000" value="30" placeholder="30">
+                            <small>Maximum 1000 codes per quiz</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Code Expiration</label>
+                            <input type="datetime-local" name="code_expires_at" placeholder="Leave empty for no expiration">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Max Attempts per Student</label>
+                            <select name="max_attempts">
+                                <option value="1">One time only</option>
+                                <option value="0">Unlimited</option>
+                                <option value="2">2 attempts</option>
+                                <option value="3">3 attempts</option>
+                                <option value="5">5 attempts</option>
+                                <option value="10">10 attempts</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="allow_concurrent" value="true">
+                                Allow multiple students to take quiz simultaneously
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="allow_concurrent" value="true">
+                            Allow multiple students to take quiz simultaneously
+                        </label>
+                    </div>
                     
                     <h3>Add Questions</h3>
                     <div id="questionsContainer">

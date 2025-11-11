@@ -1,10 +1,15 @@
-from flask import Flask, render_template, request, redirect, session, send_file, flash
+from flask import Flask, render_template, request, redirect, session, send_file, flash, url_for
 import pymysql
 pymysql.install_as_MySQLdb()
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl
 from datetime import datetime
+import secrets
+import string
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/examify_db'
@@ -35,6 +40,19 @@ class Quiz(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     duration = db.Column(db.Integer)
     total_marks = db.Column(db.Integer)
+    code_expires_at = db.Column(db.DateTime)
+    max_attempts = db.Column(db.Integer, default=1)  # 0 = unlimited, >0 = limited
+    allow_concurrent = db.Column(db.Boolean, default=False)
+    access_codes = db.relationship('AccessCode', backref='quiz', lazy=True)
+
+class AccessCode(db.Model):
+    __tablename__ = 'access_codes'
+    id = db.Column(db.Integer, primary_key=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey('quizzes.id'))
+    code = db.Column(db.String(8), unique=True)
+    is_used = db.Column(db.Boolean, default=False)
+    used_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    used_at = db.Column(db.DateTime, nullable=True)
 
 class Question(db.Model):
     __tablename__ = 'questions'
@@ -206,22 +224,61 @@ def delete_quiz(quiz_id):
 def create_quiz():
     if session.get('role') != 'teacher':
         return redirect('/login')
-    
+
     if request.method == 'POST':
         title = request.form['title']
         topic_id = request.form['topic_id']
         duration = int(request.form['duration'])
         total_marks = int(request.form['total_marks'])
         teacher_id = session.get('user_id')
-        
+
+        # Security settings
+        code_expires_at = request.form.get('code_expires_at')
+        if code_expires_at:
+            from datetime import datetime
+            code_expires_at = datetime.fromisoformat(code_expires_at.replace('T', ' '))
+        max_attempts = int(request.form.get('max_attempts', '1'))
+        allow_concurrent = 'allow_concurrent' in request.form
+
+        # Bulk code generation
+        num_codes = int(request.form.get('num_codes', '1'))
+        if num_codes < 1:
+            num_codes = 1
+        elif num_codes > 1000:  # Reasonable limit
+            num_codes = 1000
+
         # Create quiz
         new_quiz = Quiz(
             title=title,
             topic_id=topic_id,
             teacher_id=teacher_id,
             duration=duration,
-            total_marks=total_marks
+            total_marks=total_marks,
+            code_expires_at=code_expires_at,
+            max_attempts=max_attempts,
+            allow_concurrent=allow_concurrent
         )
+        db.session.add(new_quiz)
+        db.session.flush()  # Get quiz ID
+
+        # Generate unique access codes
+        def generate_access_code():
+            return ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+
+        generated_codes = []
+        for _ in range(num_codes):
+            code = generate_access_code()
+            while AccessCode.query.filter_by(code=code).first():
+                code = generate_access_code()
+            generated_codes.append(code)
+
+        # Create access code records
+        for code in generated_codes:
+            access_code_record = AccessCode(
+                quiz_id=new_quiz.id,
+                code=code
+            )
+            db.session.add(access_code_record)
         db.session.add(new_quiz)
         db.session.flush()  # Get the quiz ID
         
@@ -267,6 +324,11 @@ def create_quiz():
             question_index += 1
         
         db.session.commit()
+
+        # Store generated codes in session for distribution
+        session['generated_codes'] = generated_codes
+        session['quiz_title'] = title
+
         return redirect('/teacher/dashboard')
     
     # Get topics for the dropdown
@@ -281,9 +343,142 @@ def view_results(quiz_id):
         StudentAttempt, User
     ).join(User, StudentAttempt.student_id == User.id
     ).filter(StudentAttempt.quiz_id == quiz_id).all()
-    
+
     quiz = Quiz.query.get(quiz_id)
     return render_template('teacher/results.html', results=results, quiz=quiz)
+
+@app.route('/teacher/codes/<int:quiz_id>')
+def view_codes(quiz_id):
+    if session.get('role') != 'teacher':
+        return redirect('/login')
+
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz or quiz.teacher_id != session.get('user_id'):
+        flash('Quiz not found or access denied.', 'error')
+        return redirect('/teacher/dashboard')
+
+    codes = AccessCode.query.filter_by(quiz_id=quiz_id).all()
+    # Create a dict of user_id -> user_name for used codes
+    users = {}
+    for code in codes:
+        if code.used_by and code.used_by not in users:
+            user = User.query.get(code.used_by)
+            if user:
+                users[code.used_by] = user.name
+    return render_template('teacher/codes.html', quiz=quiz, codes=codes, users=users)
+
+@app.route('/teacher/download-codes/<int:quiz_id>')
+def download_codes(quiz_id):
+    if session.get('role') != 'teacher':
+        return redirect('/login')
+
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz or quiz.teacher_id != session.get('user_id'):
+        flash('Quiz not found or access denied.', 'error')
+        return redirect('/teacher/dashboard')
+
+    # Create Excel workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Access Codes"
+    ws.append(['Code', 'Status', 'Used By', 'Used At'])
+
+    codes = AccessCode.query.filter_by(quiz_id=quiz_id).all()
+    for code in codes:
+        used_by = User.query.get(code.used_by).name if code.used_by else 'Not used'
+        used_at = code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else 'Not used'
+        status = 'Used' if code.is_used else 'Available'
+        ws.append([code.code, status, used_by, used_at])
+
+    filename = f'quiz_{quiz_id}_codes.xlsx'
+    wb.save(filename)
+    return send_file(filename, as_attachment=True)
+
+@app.route('/teacher/print-codes/<int:quiz_id>')
+def print_codes(quiz_id):
+    if session.get('role') != 'teacher':
+        return redirect('/login')
+
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz or quiz.teacher_id != session.get('user_id'):
+        flash('Quiz not found or access denied.', 'error')
+        return redirect('/teacher/dashboard')
+
+    codes = AccessCode.query.filter_by(quiz_id=quiz_id, is_used=False).all()
+    from datetime import datetime
+    now = datetime.now()
+    return render_template('teacher/print_codes.html', quiz=quiz, codes=codes, now=now)
+
+@app.route('/teacher/email-codes/<int:quiz_id>', methods=['GET', 'POST'])
+def email_codes(quiz_id):
+    if session.get('role') != 'teacher':
+        return redirect('/login')
+
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz or quiz.teacher_id != session.get('user_id'):
+        flash('Quiz not found or access denied.', 'error')
+        return redirect('/teacher/dashboard')
+
+    if request.method == 'POST':
+        emails = request.form.get('emails', '').split(',')
+        emails = [email.strip() for email in emails if email.strip()]
+
+        if not emails:
+            flash('Please enter at least one email address.', 'error')
+            return redirect(url_for('email_codes', quiz_id=quiz_id))
+
+        codes = AccessCode.query.filter_by(quiz_id=quiz_id, is_used=False).limit(len(emails)).all()
+
+        if len(codes) < len(emails):
+            flash(f'Not enough available codes. Only {len(codes)} codes available for {len(emails)} emails.', 'error')
+            return redirect(url_for('email_codes', quiz_id=quiz_id))
+
+            # Email configuration
+        SMTP_SERVER = 'smtp.gmail.com'
+        SMTP_PORT = 587
+        SENDER_EMAIL = 'lamanilaoexequiel4@gmail.com'  # Replace with actual Gmail address
+        SENDER_PASSWORD = 'oytl rkgz lwvl qisf'  # Replace with app password
+
+
+        try:
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+
+            for i, email in enumerate(emails):
+                if i < len(codes):
+                    code = codes[i]
+
+                    msg = MIMEMultipart()
+                    msg['From'] = SENDER_EMAIL
+                    msg['To'] = email
+                    msg['Subject'] = f'Access Code for Quiz: {quiz.title}'
+
+                    body = f"""
+                    Hello,
+
+                    You have been assigned an access code for the quiz "{quiz.title}".
+
+                    Access Code: {code.code}
+
+                    Please use this code to access the quiz. The code can only be used once.
+
+                    Best regards,
+                    Examify Team
+                    """
+                    msg.attach(MIMEText(body, 'plain'))
+
+                    server.send_message(msg)
+
+            server.quit()
+            flash(f'Successfully sent {len(emails)} access codes via email.', 'success')
+
+        except Exception as e:
+            flash(f'Failed to send emails: {str(e)}. Please check your email configuration.', 'error')
+
+        return redirect(url_for('view_codes', quiz_id=quiz_id))
+
+    return render_template('teacher/email_codes.html', quiz=quiz)
 
 @app.route('/teacher/download-scores/<int:quiz_id>')
 def download_scores(quiz_id):
@@ -311,32 +506,38 @@ def download_scores(quiz_id):
     wb.save(filename)
     return send_file(filename, as_attachment=True)
 
-@app.route('/student/dashboard')
+@app.route('/student/dashboard', methods=['GET', 'POST'])
 def student_dashboard():
     if session.get('role') != 'student':
         return redirect('/login')
-    
-    # Get available quizzes grouped by topics
-    topics_with_quizzes = db.session.query(Topic, Quiz).join(
-        Quiz, Topic.id == Quiz.topic_id
-    ).all()
-    
+
     # Get student's past attempts
     student_id = session.get('user_id')
     attempts = StudentAttempt.query.filter_by(student_id=student_id).all()
-    
-    return render_template('student/dashboard.html', 
-                         topics_with_quizzes=topics_with_quizzes,
-                         attempts=attempts)
+
+    return render_template('student/dashboard.html',
+                          attempts=attempts)
 
 @app.route('/student/take-quiz/<int:quiz_id>')
 def take_quiz(quiz_id):
     if session.get('role') != 'student':
         return redirect('/login')
-    
+
     quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        flash('Quiz not found.', 'error')
+        return redirect('/student/dashboard')
+
+    # Verify access code was used (since we redirect here only after valid access code)
+    # Additional security: check if student has already attempted
+    student_id = session.get('user_id')
+    existing_attempt = StudentAttempt.query.filter_by(student_id=student_id, quiz_id=quiz_id).first()
+    if existing_attempt:
+        flash('You have already attempted this quiz.', 'error')
+        return redirect('/student/dashboard')
+
     questions = Question.query.filter_by(quiz_id=quiz_id).all()
-    
+
     # Get options for each question
     questions_with_options = []
     for question in questions:
@@ -345,28 +546,28 @@ def take_quiz(quiz_id):
             'question': question,
             'options': options
         })
-    
+
     return render_template('student/take_quiz.html', quiz=quiz, questions_with_options=questions_with_options)
 
 @app.route('/student/submit-quiz/<int:quiz_id>', methods=['POST'])
 def submit_quiz(quiz_id):
     if session.get('role') != 'student':
         return redirect('/login')
-    
+
     student_id = session.get('user_id')
     quiz = Quiz.query.get(quiz_id)
-    
+
     # Calculate score
     total_score = 0
     questions = Question.query.filter_by(quiz_id=quiz_id).all()
-    
+
     for question in questions:
         student_answer = request.form.get(f'question_{question.id}')
         if student_answer == question.correct_answer:
             total_score += question.marks
-    
+
     percentage = (total_score / quiz.total_marks) * 100
-    
+
     # Save attempt
     attempt = StudentAttempt(
         student_id=student_id,
@@ -378,25 +579,98 @@ def submit_quiz(quiz_id):
     )
     db.session.add(attempt)
     db.session.commit()
-    
+
+    # Clear active session for this quiz
+    if 'active_quiz_sessions' in session and quiz_id in session['active_quiz_sessions']:
+        session['active_quiz_sessions'].remove(quiz_id)
+        session.modified = True
+
     return redirect(f'/student/result/{attempt.id}')
 
 @app.route('/student/result/<int:attempt_id>')
 def view_result(attempt_id):
     if session.get('role') != 'student':
         return redirect('/login')
-    
+
     attempt = StudentAttempt.query.get(attempt_id)
     if not attempt or attempt.student_id != session.get('user_id'):
         return redirect('/student/dashboard')
-    
+
     quiz = Quiz.query.get(attempt.quiz_id)
     questions = Question.query.filter_by(quiz_id=quiz.id).all()
-    
-    return render_template('student/result.html', 
-                         attempt=attempt, 
-                         quiz=quiz, 
-                         questions=questions)
+
+    return render_template('student/result.html',
+                          attempt=attempt,
+                          quiz=quiz,
+                          questions=questions)
+
+@app.route('/student/enter-access-code', methods=['POST'])
+def enter_access_code():
+    if session.get('role') != 'student':
+        return redirect('/login')
+
+    access_code = request.form.get('access_code', '').strip().upper()
+    if not access_code:
+        flash('Please enter an access code.', 'error')
+        return redirect('/student/dashboard')
+
+    # Validate format (8 characters, alphanumeric uppercase)
+    if len(access_code) != 8 or not access_code.isalnum():
+        flash('Invalid format: Access code must be exactly 8 alphanumeric characters.', 'error')
+        return redirect('/student/dashboard')
+
+    # Find access code in database
+    code_record = AccessCode.query.filter_by(code=access_code).first()
+    if not code_record:
+        flash('Invalid access code: Code does not exist.', 'error')
+        return redirect('/student/dashboard')
+
+    quiz = Quiz.query.get(code_record.quiz_id)
+    if not quiz:
+        flash('Invalid access code: Associated quiz not found.', 'error')
+        return redirect('/student/dashboard')
+
+    # Check if code is already used
+    if code_record.is_used:
+        flash('Code already used: This access code has already been redeemed.', 'error')
+        return redirect('/student/dashboard')
+
+    # Check expiration
+    if quiz.code_expires_at and datetime.now() > quiz.code_expires_at:
+        flash('Code expired: This access code has expired.', 'error')
+        return redirect('/student/dashboard')
+
+    student_id = session.get('user_id')
+
+    # Check concurrent access
+    if not quiz.allow_concurrent:
+        # Check if any student is currently taking this quiz
+        # This is a simple check - in production, you'd want more sophisticated session tracking
+        active_sessions = session.get('active_quiz_sessions', [])
+        if quiz.id in active_sessions:
+            flash('Quiz in use: Another student is currently taking this quiz. Please wait and try again.', 'error')
+            return redirect('/student/dashboard')
+
+    # Check attempt limits
+    existing_attempts = StudentAttempt.query.filter_by(student_id=student_id, quiz_id=quiz.id).count()
+    if quiz.max_attempts > 0 and existing_attempts >= quiz.max_attempts:
+        flash(f'Attempt limit reached: You have reached the maximum number of attempts ({quiz.max_attempts}) for this quiz.', 'error')
+        return redirect('/student/dashboard')
+
+    # Mark code as used
+    code_record.is_used = True
+    code_record.used_by = student_id
+    code_record.used_at = datetime.now()
+    db.session.commit()
+
+    # Mark session as active for this quiz
+    if not quiz.allow_concurrent:
+        if 'active_quiz_sessions' not in session:
+            session['active_quiz_sessions'] = []
+        if quiz.id not in session['active_quiz_sessions']:
+            session['active_quiz_sessions'].append(quiz.id)
+
+    return redirect(f'/student/take-quiz/{quiz.id}')
 
 @app.route('/')
 def index():
@@ -409,6 +683,7 @@ def index():
 
 @app.route('/logout')
 def logout():
+    # Clear any active quiz sessions on logout
     session.clear()
     return redirect('/')
 

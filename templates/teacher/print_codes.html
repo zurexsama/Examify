@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Printable Access Codes | Examify</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+    @media print {
+        .no-print { display: none; }
+        .print-codes { page-break-inside: avoid; }
+        .code-item {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+    }
+    .print-codes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+    }
+    .code-item {
+        border: 2px solid #007bff;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    .code-text {
+        font-family: 'Courier New', monospace;
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #007bff;
+        margin: 10px 0;
+        letter-spacing: 2px;
+    }
+    .quiz-info {
+        margin-bottom: 20px;
+        text-align: center;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 20px;
+    }
+    .print-button {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    .print-button:hover {
+        background: #218838;
+    }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()" class="print-button">🖨️ Print Codes</button>
+        <a href="/teacher/codes/{{ quiz.id }}" style="position: fixed; top: 20px; left: 20px; background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Back to Codes</a>
+    </div>
+
+    <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <div class="quiz-info">
+            <h1>{{ quiz.title }}</h1>
+            <p><strong>Duration:</strong> {{ quiz.duration }} minutes</p>
+            <p><strong>Total Marks:</strong> {{ quiz.total_marks }}</p>
+            {% if quiz.code_expires_at %}
+            <p><strong>Expires:</strong> {{ quiz.code_expires_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            {% endif %}
+            <p><strong>Generated:</strong> {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
+        </div>
+
+        <h2 style="text-align: center; margin: 30px 0 20px;">Access Codes</h2>
+
+        <div class="print-codes">
+            {% for code in codes %}
+            <div class="code-item">
+                <div style="font-size: 0.9em; color: #6c757d; margin-bottom: 5px;">Access Code</div>
+                <div class="code-text">{{ code.code }}</div>
+                <div style="font-size: 0.8em; color: #6c757d;">Valid for one use only</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; font-size: 0.9em; color: #6c757d;">
+            <p>Examify - Secure Quiz Access System</p>
+            <p>Total Codes: {{ codes|length }}</p>
+        </div>
+    </div>
+
+    <script>
+    // Auto-print when page loads (optional)
+    // window.onload = function() { window.print(); };
+    </script>
+</body>
+</html>
